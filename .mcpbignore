@@ -1,4 +1,4 @@
-# The .mcpb ships only the bundled, dependency-free server (dist/index.mjs) + user-facing docs.
+# The .mcpb ships only the bundled, dependency-free server (dist/index.mjs) and user-facing docs.
 # Everything else is build-time, contributor-only, or plugin-channel only.
 node_modules/
 src/

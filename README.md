@@ -1,55 +1,49 @@
 # fontsource-mcp
 
-An MCP stdio server for **https://fontsource.org** — 2000+ open-source fonts (all of Google Fonts plus
-extras) served as npm packages and via the jsDelivr CDN. Lets an agent search the catalog, read a font's
-metadata, produce ready-to-paste embedding snippets, index the whole catalog, and download font files.
-Uses the public Fontsource API and CDN; no API keys.
+An MCP stdio server for https://fontsource.org, which packages 2000+ open-source fonts (all of Google
+Fonts plus extras) as npm modules served from the jsDelivr CDN. It reads the public API and CDN and
+needs no key.
+
+A subset is a font file cut down to one script, such as `latin`. A variable font packs a whole weight
+range into one file and exposes axes such as `wght`.
 
 ## Tools
 
-- **`search_fonts`** — fuzzy `query` over id/family plus AND filters (`category`, `subsets`, `weights`,
-  `styles`, `variable`, `license`, `type`), paginated. Rows carry everything needed to pick a font.
-- **`get_font`** — full metadata for one `id`: subsets, weights, styles, variable axes, unicode ranges,
-  license, version, npm package names, CSS font-family names, page URL, zip URL, CDN URL templates.
-- **`get_font_css`** — `<link>` tags, `@import` lines, `npm i` + import lines, the `font-family` rule,
-  and the actual `@font-face` CSS (absolute URLs, safe to inline). Static or `variable:true`.
-- **`download_font`** — writes files to `<dest>/<id>/`. Static (`format` woff2/woff/ttf, filtered by
-  subset/weight/style), `variable:true` (`<subset>-wght-<style>.woff2`), or `zip:true` (official zip, unextracted).
-- **`index_fonts`** — facet counts (category / subset / license / type / variable) and, with `outFile`,
-  dumps the full catalog JSON to disk for local grep/jq.
-- **`get_axis_registry`** — variable-font axis registry (`wght`, `wdth`, `opsz`, `GRAD`, …).
+- `search_fonts`: fuzzy `query` over id and family, plus AND filters (`category`, `subsets`, `weights`,
+  `styles`, `variable`, `license`, `type`). Paginated. Rows carry enough to pick a font.
+- `get_font`: subsets, weights, styles, axes, unicode ranges, license, version, npm names, CSS
+  font-family names, page URL, zip URL, and CDN URL templates for one `id`.
+- `get_font_css`: `<link>` tags, `@import` lines, npm install and import lines, the `font-family`
+  rule, and inlinable `@font-face` CSS with absolute URLs. `variable:true` selects the variable package.
+- `download_font`: writes to `<dest>/<id>/`. Filters by subset, weight, style, and `format` (woff2,
+  woff, ttf). `variable:true` fetches `<subset>-wght-<style>.woff2`. `zip:true` saves the official zip
+  unextracted.
+- `index_fonts`: facet counts by category, subset, license, type, and variable. With `outFile` it
+  writes the full catalog JSON to disk.
+- `get_axis_registry`: the variable-font axis registry.
 
 ## Download location
 
-`download_font` writes under `dest` if given. Otherwise it uses **`FONTSOURCE_DOWNLOAD_DIR`**, and if that
-is unset, `./fonts` relative to the server's working directory. Under a plugin install that cwd is not
-your project, so either set the env var or pass `dest`:
-
-- Claude Code: export `FONTSOURCE_DOWNLOAD_DIR` in your shell before launching `claude` (plugins inherit
-  your environment).
-- Claude Desktop `.mcpb`: the extension asks for a "Download folder" at install time.
+`download_font` writes under `dest` when given, else `FONTSOURCE_DOWNLOAD_DIR`, else `./fonts` in the
+server's working directory. Under a plugin install that directory is not your project, so set the
+variable or pass `dest`. In Claude Code, export it before launching `claude`. The Claude Desktop
+extension asks for a folder at install.
 
 ## Install
 
-### Option A — Claude Code plugin marketplace (recommended)
+Claude Code:
 
 ```
 /plugin marketplace add nightious/fontsource-mcp
 /plugin install fontsource-mcp@fontsource-mcp
 ```
 
-This auto-wires the MCP server (the plugin config uses `${CLAUDE_PLUGIN_ROOT}`, no paths to edit) and
-adds a skill that teaches agents how to drive it. Requires Node 18+ on your `PATH`.
+The plugin wires the server through `${CLAUDE_PLUGIN_ROOT}` and adds a skill for agents. Needs Node 18+.
 
-### Option B — Desktop Extension (.mcpb, one-click Claude Desktop)
+Claude Desktop: download `fontsource-mcp.mcpb` from Releases and open it. The server is one
+dependency-free `dist/index.mjs`, so nothing runs `npm install`.
 
-Download `fontsource-mcp.mcpb` from the repo's Releases and double-click it — Claude Desktop installs it
-with no paths to edit and no `npm install` (the server is bundled into a single dependency-free
-`dist/index.mjs`).
-
-### Option C — manual (Claude Desktop / any MCP client)
-
-Run `npm install && npm run build` first, then add to `claude_desktop_config.json`:
+Manual: run `npm install && npm run build`, then add to `claude_desktop_config.json`:
 
 ```json
 "fontsource": {
@@ -59,28 +53,21 @@ Run `npm install && npm run build` first, then add to `claude_desktop_config.jso
 }
 ```
 
-> MSIX Claude Desktop installs put this config under
-> `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\`, not plain `%APPDATA%`.
+The MSIX build of Claude Desktop keeps that file under
+`%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\`.
 
-## Build (contributors)
+## Build and test
 
-The distributed artifact is a single bundled `dist/index.mjs` (esbuild). After editing anything in
-`src/`, rebuild and commit `dist/`:
-
-```
-npm install
-npm run build       # -> dist/index.mjs (what the plugin & .mcpb run)
-npm run pack        # build + produce fontsource-mcp.mcpb for Claude Desktop
-```
-
-## Self-test
+`dist/index.mjs` is the shipped artifact and is committed. After any change under `src/`, rebuild and
+commit it.
 
 ```
-npm run selftest      # or: node src/selftest.js
+npm run build       # dist/index.mjs
+npm run pack        # build, then fontsource-mcp.mcpb
+npm run selftest    # about 20 live requests, ten seconds
 ```
 
-Makes ~20 live requests to api.fontsource.org and cdn.jsdelivr.net (about 10s). Failure means the API
-shape or CDN file naming drifted.
+A selftest failure means the API shape or CDN file naming changed.
 
 ## Data sources
 
@@ -88,10 +75,9 @@ shape or CDN file naming drifted.
 - `https://cdn.jsdelivr.net/fontsource/fonts/:id[:vf]@latest/<subset>-<weight|axis>-<style>.<ext>`
 - `https://cdn.jsdelivr.net/npm/@fontsource[-variable]/:id@latest/<file>.css`
 
-Fonts themselves are licensed by their designers (OFL, Apache-2.0, CC0, …) — see each font's `license`.
+Each font carries its own license (OFL, Apache-2.0, CC0, and others) in the `license` field.
 
 ## License
 
-**All rights reserved** (see [LICENSE](LICENSE)). The source is public for viewing and for contributions
-back to this repository via pull request. It is not open source — you may not redistribute it or publish
-your own version.
+All rights reserved. See [LICENSE](LICENSE). The source is public for reading and for pull requests to
+this repository. It is not open source; do not redistribute it or publish a modified version.

@@ -1,5 +1,5 @@
 // All logic lives here; src/index.js only registers tools.
-// Data sources (public, no auth, 2500 req/10s ceiling — no throttle needed):
+// Data sources are public, need no auth, and allow 2500 req/10s, so there is no throttle:
 //   https://api.fontsource.org/v1/{fonts,fonts/:id,variable/:id,axis-registry,download/:id}
 //   https://cdn.jsdelivr.net/fontsource/fonts/:id[:vf]@latest/<subset>-<weight|axis>-<style>.<ext>
 //   https://cdn.jsdelivr.net/npm/@fontsource[-variable]/:id@latest/<file>.css
@@ -9,24 +9,24 @@ import path from "node:path";
 const API = "https://api.fontsource.org/v1";
 const CDN = "https://cdn.jsdelivr.net";
 const TTL = 3_600_000;
-// Every Fontsource id is a lowercase slug. The id is spliced into URLs AND filesystem paths,
-// so this regex is the injection/traversal guard — keep it strict.
+// Every Fontsource id is a lowercase slug. The id is spliced into URLs and filesystem paths,
+// so this regex is the injection and traversal guard. Keep it strict.
 const SLUG = /^[a-z0-9-]+$/;
 
 export function slug(id) {
   if (typeof id !== "string" || !SLUG.test(id))
-    throw new Error(`bad font id "${id}" — ids are lowercase slugs like "open-sans"; use search_fonts to find one`);
+    throw new Error(`bad font id "${id}": ids are lowercase slugs like "open-sans"; use search_fonts to find one`);
   return id;
 }
 
 async function get(url, as = "json") {
   const r = await fetch(url);
   if (!r.ok)
-    throw new Error(`fontsource HTTP ${r.status}: ${url}${r.status === 404 ? " — unknown font id or file? use search_fonts / get_font" : ""}`);
+    throw new Error(`fontsource HTTP ${r.status}: ${url}${r.status === 404 ? " (unknown font id or file; use search_fonts or get_font)" : ""}`);
   return as === "json" ? r.json() : as === "text" ? r.text() : Buffer.from(await r.arrayBuffer());
 }
 
-// ponytail: in-memory memo, 1h TTL. The catalog is 540KB; per-font metadata ~5–60KB. Errors aren't cached.
+// ponytail: in-memory memo, 1h TTL. The catalog is 540KB and per-font metadata 5 to 60KB. Errors are not cached.
 const cache = new Map();
 async function cached(url) {
   const hit = cache.get(url);
@@ -65,7 +65,7 @@ export async function searchFonts({ query, category, subsets, weights, styles, v
       if (toks.every((t) => id.includes(t) || fam.includes(t))) return 40;
       return 0;
     };
-    // ponytail: no edit-distance rung; add one at score 20 if agents report typo misses
+    // ponytail: no edit-distance rung. Add one at score 20 if agents report typo misses.
     list = list.map((f) => [score(f), f]).filter(([s]) => s)
       .sort((a, b) => b[0] - a[0] || a[1].family.length - b[1].family.length || a[1].family.localeCompare(b[1].family))
       .map(([, f]) => f);
@@ -90,7 +90,7 @@ export async function getFont(id) {
     version: f.version, npmVersion: f.npmVersion, source: f.source, lastModified: f.lastModified,
     variable: f.variable, defSubset: f.defSubset, subsets: f.subsets, weights: f.weights, styles: f.styles,
     axes,
-    // noto-sans-jp has ~120 subsets of ranges; cap so get_font stays small
+    // noto-sans-jp has about 120 unicode-range subsets. Cap them so get_font stays small.
     unicodeRange: urKeys.length > 20 ? { omitted: urKeys.length, url: `${API}/fonts/${id}` } : ur,
     npm: { static: `@fontsource/${id}`, variable: f.variable ? `@fontsource-variable/${id}` : null },
     fontFamily: { static: f.family, variable: f.variable ? `${f.family} Variable` : null },
@@ -110,12 +110,12 @@ const GENERIC = { serif: "serif", monospace: "monospace", handwriting: "cursive"
 
 export async function getFontCss({ id, weights = [400], styles = ["normal"], subsets, variable = false, variableFile = "wght" } = {}) {
   const f = await font(id);
-  if (variable && !f.variable) throw new Error(`"${id}" is not a variable font — call get_font_css without variable:true`);
+  if (variable && !f.variable) throw new Error(`"${id}" is not a variable font; call get_font_css without variable:true`);
   const ital = (s) => (s === "italic" ? "-italic" : "");
   const names = [];
   if (variable) {
-    // ponytail: one file name, no axis logic. wght[-italic].css exists for every variable font;
-    // standard/full/opsz/... exist only for some — the agent passes variableFile and a 404 names the URL.
+    // ponytail: one file name, no axis logic. wght[-italic].css exists for every variable font.
+    // standard, full, opsz, and the rest exist only for some, so the agent passes variableFile and a 404 names the URL.
     for (const s of styles) names.push(`${variableFile}${ital(s)}.css`);
   } else {
     for (const w of weights) for (const s of styles) for (const sub of subsets?.length ? subsets : [null])
@@ -125,8 +125,8 @@ export async function getFontCss({ id, weights = [400], styles = ["normal"], sub
   const base = `${CDN}/npm/${pkg}@latest/`;
   const urls = names.map((n) => base + n);
   const fontFamily = variable ? `${f.family} Variable` : f.family;
-  // The package CSS references ./files/… relative to itself. Fine for <link>/@import (the browser
-  // resolves against the stylesheet URL) but broken once inlined, so absolutize the inlined copy.
+  // The package CSS references ./files/ relative to itself. That works for <link> and @import, where
+  // the browser resolves against the stylesheet URL, but breaks once inlined, so absolutize the inlined copy.
   const css = (await Promise.all(urls.map((u) => get(u, "text")))).join("\n")
     .replaceAll("url(./files/", `url(${base}files/`);
   return {
@@ -148,12 +148,12 @@ export async function downloadFont({ id, dest, format = "woff2", subsets, weight
   const want = (arr, k) => !arr?.length || arr.map(String).includes(String(k));
   const jobs = [];
   if (zip) {
-    // ponytail: saved as-is — Node has no stdlib unzip; per-file mode IS the extracted path.
+    // ponytail: saved as-is. Node has no stdlib unzip, and per-file mode is the extracted path.
     jobs.push({ name: `${id}.zip`, url: `${API}/download/${id}` });
   } else {
     const f = await font(id);
     if (variable) {
-      if (!f.variable) throw new Error(`"${id}" is not a variable font — call download_font without variable:true`);
+      if (!f.variable) throw new Error(`"${id}" is not a variable font; call download_font without variable:true`);
       for (const sub of f.subsets.filter((s) => want(subsets, s)))
         for (const st of f.styles.filter((s) => want(styles, s)))
           jobs.push({ name: `${sub}-${axis}-${st}.woff2`, url: `${CDN}/fontsource/fonts/${id}:vf@latest/${sub}-${axis}-${st}.woff2` });
@@ -164,7 +164,7 @@ export async function downloadFont({ id, dest, format = "woff2", subsets, weight
             jobs.push({ name: `${sub}-${w}-${st}.${format}`, url: v.url[format] });
     }
   }
-  if (!jobs.length) throw new Error(`no files match those filters for "${id}" — see get_font for its subsets/weights/styles`);
+  if (!jobs.length) throw new Error(`no files match those filters for "${id}"; see get_font for its subsets, weights, and styles`);
   fs.mkdirSync(dir, { recursive: true });
   const results = await Promise.all(jobs.map(async (j) => {
     try {
@@ -199,7 +199,7 @@ export async function indexFonts({ outFile } = {}) {
 export async function getAxisRegistry(tag) {
   const reg = await cached(`${API}/axis-registry`);
   if (!tag) return reg;
-  // registry keys are case-sensitive OpenType tags: registered axes lowercase (wght), custom uppercase (GRAD)
+  // Registry keys are case-sensitive OpenType tags: registered axes are lowercase (wght), custom ones uppercase (GRAD).
   const key = [tag, tag.toLowerCase(), tag.toUpperCase()].find((k) => reg[k]);
   if (!key) throw new Error(`unknown axis "${tag}"; known: ${Object.keys(reg).join(", ")}`);
   return { tag: key, ...reg[key] };

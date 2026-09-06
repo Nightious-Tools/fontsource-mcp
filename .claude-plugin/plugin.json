@@ -1,0 +1,16 @@
+{
+  "name": "fontsource-mcp",
+  "description": "Search, index, link, and download 2000+ open-source fonts from fontsource.org.",
+  "version": "0.1.0",
+  "author": { "name": "nightious" },
+  "homepage": "https://github.com/nightious/fontsource-mcp",
+  "repository": "https://github.com/nightious/fontsource-mcp",
+  "keywords": ["mcp", "mcp-server", "model-context-protocol", "claude", "fonts", "fontsource", "google-fonts", "webfonts", "css"],
+  "license": "SEE LICENSE IN LICENSE",
+  "mcpServers": {
+    "fontsource": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.mjs"]
+    }
+  }
+}

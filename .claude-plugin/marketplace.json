@@ -1,0 +1,19 @@
+{
+  "name": "fontsource-mcp",
+  "description": "Search, index, link, and download 2000+ open-source fonts from fontsource.org, from Claude.",
+  "owner": { "name": "nightious" },
+  "plugins": [
+    {
+      "name": "fontsource-mcp",
+      "source": "./",
+      "description": "MCP server for fontsource.org: fuzzy font search, full metadata, ready-to-paste CSS/CDN/npm snippets, catalog indexing, and font file downloads — plus a skill teaching agents how to drive it.",
+      "version": "0.1.0",
+      "author": { "name": "nightious" },
+      "homepage": "https://github.com/nightious/fontsource-mcp",
+      "repository": "https://github.com/nightious/fontsource-mcp",
+      "license": "SEE LICENSE IN LICENSE",
+      "keywords": ["mcp", "mcp-server", "model-context-protocol", "claude", "fonts", "fontsource", "google-fonts", "webfonts", "css"],
+      "category": "design"
+    }
+  ]
+}

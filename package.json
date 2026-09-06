@@ -1,0 +1,30 @@
+{
+  "name": "fontsource-mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "MCP server to search, index, link, and download the 2000+ open-source fonts on fontsource.org",
+  "keywords": ["mcp", "mcp-server", "model-context-protocol", "claude", "fonts", "fontsource", "google-fonts", "webfonts", "css"],
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "nightious",
+  "homepage": "https://github.com/nightious/fontsource-mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nightious/fontsource-mcp.git"
+  },
+  "bin": {
+    "fontsource-mcp": "dist/index.mjs"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "selftest": "node src/selftest.js",
+    "build": "esbuild src/index.js --bundle --platform=node --format=esm --packages=bundle --outfile=dist/index.mjs --banner:js=\"import{createRequire}from'node:module';const require=createRequire(import.meta.url);\"",
+    "pack": "npm run build && npx -y @anthropic-ai/mcpb pack"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

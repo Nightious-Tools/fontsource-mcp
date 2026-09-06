@@ -1,6 +1,6 @@
 {
   "name": "fontsource-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "MCP server to search, index, link, and download the 2000+ open-source fonts on fontsource.org",
   "keywords": ["mcp", "mcp-server", "model-context-protocol", "claude", "fonts", "fontsource", "google-fonts", "webfonts", "css"],

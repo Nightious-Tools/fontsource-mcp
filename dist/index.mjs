@@ -21432,7 +21432,7 @@ var StdioServerTransport = class {
 // package.json
 var package_default = {
   name: "fontsource-mcp",
-  version: "0.1.0",
+  version: "0.1.1",
   type: "module",
   description: "MCP server to search, index, link, and download the 2000+ open-source fonts on fontsource.org",
   keywords: ["mcp", "mcp-server", "model-context-protocol", "claude", "fonts", "fontsource", "google-fonts", "webfonts", "css"],
@@ -21470,13 +21470,13 @@ var TTL = 36e5;
 var SLUG = /^[a-z0-9-]+$/;
 function slug(id2) {
   if (typeof id2 !== "string" || !SLUG.test(id2))
-    throw new Error(`bad font id "${id2}" \u2014 ids are lowercase slugs like "open-sans"; use search_fonts to find one`);
+    throw new Error(`bad font id "${id2}": ids are lowercase slugs like "open-sans"; use search_fonts to find one`);
   return id2;
 }
 async function get(url, as = "json") {
   const r = await fetch(url);
   if (!r.ok)
-    throw new Error(`fontsource HTTP ${r.status}: ${url}${r.status === 404 ? " \u2014 unknown font id or file? use search_fonts / get_font" : ""}`);
+    throw new Error(`fontsource HTTP ${r.status}: ${url}${r.status === 404 ? " (unknown font id or file; use search_fonts or get_font)" : ""}`);
   return as === "json" ? r.json() : as === "text" ? r.text() : Buffer.from(await r.arrayBuffer());
 }
 var cache = /* @__PURE__ */ new Map();
@@ -21551,7 +21551,7 @@ async function getFont(id2) {
     weights: f.weights,
     styles: f.styles,
     axes,
-    // noto-sans-jp has ~120 subsets of ranges; cap so get_font stays small
+    // noto-sans-jp has about 120 unicode-range subsets. Cap them so get_font stays small.
     unicodeRange: urKeys.length > 20 ? { omitted: urKeys.length, url: `${API}/fonts/${id2}` } : ur,
     npm: { static: `@fontsource/${id2}`, variable: f.variable ? `@fontsource-variable/${id2}` : null },
     fontFamily: { static: f.family, variable: f.variable ? `${f.family} Variable` : null },
@@ -21569,7 +21569,7 @@ async function getFont(id2) {
 var GENERIC = { serif: "serif", monospace: "monospace", handwriting: "cursive", display: "cursive" };
 async function getFontCss({ id: id2, weights: weights2 = [400], styles: styles2 = ["normal"], subsets: subsets2, variable = false, variableFile = "wght" } = {}) {
   const f = await font(id2);
-  if (variable && !f.variable) throw new Error(`"${id2}" is not a variable font \u2014 call get_font_css without variable:true`);
+  if (variable && !f.variable) throw new Error(`"${id2}" is not a variable font; call get_font_css without variable:true`);
   const ital = (s) => s === "italic" ? "-italic" : "";
   const names = [];
   if (variable) {
@@ -21604,7 +21604,7 @@ async function downloadFont({ id: id2, dest, format = "woff2", subsets: subsets2
   } else {
     const f = await font(id2);
     if (variable) {
-      if (!f.variable) throw new Error(`"${id2}" is not a variable font \u2014 call download_font without variable:true`);
+      if (!f.variable) throw new Error(`"${id2}" is not a variable font; call download_font without variable:true`);
       for (const sub of f.subsets.filter((s) => want(subsets2, s)))
         for (const st of f.styles.filter((s) => want(styles2, s)))
           jobs.push({ name: `${sub}-${axis}-${st}.woff2`, url: `${CDN}/fontsource/fonts/${id2}:vf@latest/${sub}-${axis}-${st}.woff2` });
@@ -21617,7 +21617,7 @@ async function downloadFont({ id: id2, dest, format = "woff2", subsets: subsets2
       }
     }
   }
-  if (!jobs.length) throw new Error(`no files match those filters for "${id2}" \u2014 see get_font for its subsets/weights/styles`);
+  if (!jobs.length) throw new Error(`no files match those filters for "${id2}"; see get_font for its subsets, weights, and styles`);
   fs.mkdirSync(dir, { recursive: true });
   const results = await Promise.all(jobs.map(async (j) => {
     try {
@@ -21667,24 +21667,24 @@ async function getAxisRegistry(tag) {
 var server = new McpServer({ name: "fontsource", version: package_default.version });
 var text = (v) => ({ content: [{ type: "text", text: JSON.stringify(v) }] });
 var RO = { readOnlyHint: true };
-var id = external_exports.string().describe('Fontsource id slug, e.g. "inter", "open-sans", "noto-sans-jp". Get it from search_fonts; it is NOT the display name.');
-var subsets = external_exports.array(external_exports.string()).optional().describe('Subsets like ["latin","latin-ext","cyrillic"]. Omit for all.');
-var weights = external_exports.array(external_exports.number()).optional().describe("Weights like [400,700]. Omit for all.");
+var id = external_exports.string().describe('Fontsource id slug such as "inter", "open-sans", or "noto-sans-jp". Get it from search_fonts. It is not the display name.');
+var subsets = external_exports.array(external_exports.string()).optional().describe('Subsets such as ["latin","latin-ext","cyrillic"]. Omit for all.');
+var weights = external_exports.array(external_exports.number()).optional().describe("Weights such as [400,700]. Omit for all.");
 var styles = external_exports.array(external_exports.enum(["normal", "italic"])).optional().describe('["normal"], ["italic"], or both. Omit for all.');
 server.registerTool(
   "search_fonts",
   {
-    description: "Search the Fontsource catalog (2000+ open-source fonts). Fuzzy `query` matches id/family (exact > prefix > substring > all words); filters are AND. Returns compact rows with the `id` every other tool needs. No query + filters = browse a category.",
+    description: "Search the Fontsource catalog of 2000+ open-source fonts. The fuzzy query matches id and family (exact, then prefix, then substring, then all words). Filters are AND. Rows are compact and carry the id every other tool needs. Filters without a query browse a category.",
     annotations: { title: "Search fonts", ...RO },
     inputSchema: {
-      query: external_exports.string().optional().describe('Name fragment, e.g. "inter", "open sans", "mono".'),
+      query: external_exports.string().optional().describe('Name fragment such as "inter", "open sans", or "mono".'),
       category: external_exports.enum(["sans-serif", "serif", "display", "monospace", "handwriting", "other", "icons"]).optional(),
       subsets,
       weights,
       styles,
-      variable: external_exports.boolean().optional().describe("true = only variable fonts."),
+      variable: external_exports.boolean().optional().describe("true returns only variable fonts."),
       license: external_exports.string().optional().describe("OFL-1.1 | Apache-2.0 | CC0-1.0 | mit | Unlicense | UFL-1.0"),
-      type: external_exports.enum(["google", "other"]).optional().describe("google = mirrored from Google Fonts."),
+      type: external_exports.enum(["google", "other"]).optional().describe("google means mirrored from Google Fonts."),
       limit: external_exports.number().int().min(1).max(100).optional().describe("Default 20."),
       offset: external_exports.number().int().min(0).optional()
     }
@@ -21694,7 +21694,7 @@ server.registerTool(
 server.registerTool(
   "get_font",
   {
-    description: "Full metadata for one font: subsets, weights, styles, variable axes, unicode ranges, license, npm package names, CSS font-family names, fontsource.org page, zip URL, and CDN URL templates for every file. Call before get_font_css/download_font to learn what subsets/weights exist.",
+    description: "Metadata for one font: subsets, weights, styles, variable axes, unicode ranges, license, npm package names, CSS font-family names, fontsource.org page, zip URL, and CDN URL templates for every file. Call it before get_font_css or download_font to learn which subsets and weights exist.",
     annotations: { title: "Get font metadata", ...RO },
     inputSchema: { id }
   },
@@ -21703,15 +21703,15 @@ server.registerTool(
 server.registerTool(
   "get_font_css",
   {
-    description: 'Ready-to-paste font embedding: CDN <link> tags, @import lines, npm install + import lines, the font-family rule, and the actual @font-face CSS text (absolute URLs, safe to inline). Defaults to weight 400 normal; each extra weight\xD7style adds ~1.5KB of CSS. Set variable:true for the variable package (font-family becomes "<Family> Variable").',
-    annotations: { title: "Get font CSS / links", ...RO },
+    description: 'Font embedding snippets: CDN <link> tags, @import lines, npm install and import lines, the font-family rule, and the @font-face CSS text with absolute URLs, safe to inline. Defaults to weight 400 normal. Each extra weight and style combination adds about 1.5KB of CSS. Set variable:true for the variable package; the font-family then becomes "<Family> Variable".',
+    annotations: { title: "Get font CSS and links", ...RO },
     inputSchema: {
       id,
       weights: external_exports.array(external_exports.number()).optional().describe("Static only. Default [400]."),
       styles: external_exports.array(external_exports.enum(["normal", "italic"])).optional().describe('Default ["normal"].'),
-      subsets: external_exports.array(external_exports.string()).optional().describe("Static only. Omit for the all-subsets file per weight; set to get per-subset files (smaller)."),
-      variable: external_exports.boolean().optional().describe("Use @fontsource-variable/<id> (font must be variable)."),
-      variableFile: external_exports.string().optional().describe('Variable only. CSS file stem: "wght" (default, always exists), or "standard"/"full"/"opsz"/\u2026 where the package ships them.')
+      subsets: external_exports.array(external_exports.string()).optional().describe("Static only. Omit for the all-subsets file per weight, or set it for the smaller per-subset files."),
+      variable: external_exports.boolean().optional().describe("Use @fontsource-variable/<id>. The font must be variable."),
+      variableFile: external_exports.string().optional().describe('Variable only. CSS file stem: "wght" (default, always exists), or "standard", "full", "opsz", and so on where the package ships them.')
     }
   },
   async (a) => text(await getFontCss(a))
@@ -21719,18 +21719,18 @@ server.registerTool(
 server.registerTool(
   "download_font",
   {
-    description: `Download font files to disk under <dest>/<id>/. Default dest = $FONTSOURCE_DOWNLOAD_DIR or ./fonts (currently ${defaultDownloadDir()}). Static mode filters subsets/weights/styles/format; variable:true fetches <subset>-<axis>-<style>.woff2 variable files (weights/format ignored); zip:true saves the official all-files zip as-is (not extracted). Returns saved names + bytes.`,
+    description: `Download font files to disk under <dest>/<id>/. Default dest is $FONTSOURCE_DOWNLOAD_DIR, else ./fonts (currently ${defaultDownloadDir()}). Static mode filters subsets, weights, styles, and format. variable:true fetches <subset>-<axis>-<style>.woff2 variable files and ignores weights and format. zip:true saves the official all-files zip without extracting it. Returns saved names and bytes.`,
     annotations: { title: "Download font files", readOnlyHint: false, destructiveHint: false },
     inputSchema: {
       id,
-      dest: external_exports.string().optional().describe("Directory to write into (absolute or relative to the server cwd). Files go in <dest>/<id>/."),
+      dest: external_exports.string().optional().describe("Directory to write into, absolute or relative to the server cwd. Files go in <dest>/<id>/."),
       format: external_exports.enum(["woff2", "woff", "ttf"]).optional().describe("Static only. Default woff2."),
       subsets,
       weights,
       styles,
       variable: external_exports.boolean().optional(),
       axis: external_exports.string().optional().describe('Variable only. "wght" (default), "standard", "full", or a single axis tag.'),
-      zip: external_exports.boolean().optional().describe("Save api.fontsource.org/v1/download/<id> zip instead of individual files.")
+      zip: external_exports.boolean().optional().describe("Save the api.fontsource.org/v1/download/<id> zip instead of individual files.")
     }
   },
   async (a) => text(await downloadFont(a))
@@ -21738,7 +21738,7 @@ server.registerTool(
 server.registerTool(
   "index_fonts",
   {
-    description: "Catalog facets: counts per category, subset, license, type, and variable/static. With outFile, also writes the full 2000+ font catalog JSON (id, family, subsets, weights, styles, category, license, type, variable) to that path so you can grep/jq it locally instead of paginating search_fonts.",
+    description: "Catalog facets: counts per category, subset, license, type, and variable or static. With outFile it also writes the full 2000+ font catalog JSON (id, family, subsets, weights, styles, category, license, type, variable) to that path so you can grep or jq it locally instead of paginating search_fonts.",
     annotations: { title: "Index the catalog", readOnlyHint: false, destructiveHint: false },
     inputSchema: { outFile: external_exports.string().optional().describe("Path to write the full catalog JSON. Omit for facets only.") }
   },
@@ -21747,7 +21747,7 @@ server.registerTool(
 server.registerTool(
   "get_axis_registry",
   {
-    description: "Variable-font axis registry: name, description, min/max/default for every axis tag (wght, wdth, opsz, slnt, ital, GRAD, \u2026). Pass a tag for one entry.",
+    description: "Variable-font axis registry: name, description, min, max, and default for every axis tag (wght, wdth, opsz, slnt, ital, GRAD, and the rest). Pass a tag for one entry.",
     annotations: { title: "Axis registry", ...RO },
     inputSchema: { tag: external_exports.string().optional() }
   },

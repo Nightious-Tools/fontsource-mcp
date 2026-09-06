@@ -23,7 +23,7 @@ jobs:
       - name: dist/ is in sync with src/
         run: |
           if ! git diff --exit-code -- dist/; then
-            echo "::error file=dist/index.mjs::dist/ is stale — run 'npm run build' and commit dist/"
+            echo "::error file=dist/index.mjs::dist/ is stale. Run 'npm run build' and commit dist/"
             exit 1
           fi
 

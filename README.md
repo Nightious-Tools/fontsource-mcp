@@ -79,5 +79,4 @@ Each font carries its own license (OFL, Apache-2.0, CC0, and others) in the `lic
 
 ## License
 
-All rights reserved. See [LICENSE](LICENSE). The source is public for reading and for pull requests to
-this repository. It is not open source; do not redistribute it or publish a modified version.
+Source-available, not open source. You may install and run it; you may not redistribute or modify it. See [LICENSE](LICENSE).

@@ -5,8 +5,8 @@
   "version": "0.2.0",
   "description": "Search, index, link, and download 2000+ open-source fonts from fontsource.org.",
   "author": { "name": "nightious", "url": "https://github.com/nightious" },
-  "repository": { "type": "git", "url": "https://github.com/nightious/fontsource-mcp.git" },
-  "homepage": "https://github.com/nightious/fontsource-mcp",
+  "repository": { "type": "git", "url": "https://github.com/Nightious-Tools/fontsource-mcp.git" },
+  "homepage": "https://github.com/Nightious-Tools/fontsource-mcp",
   "license": "SEE LICENSE IN LICENSE",
   "keywords": ["mcp", "mcp-server", "model-context-protocol", "claude", "fonts", "fontsource", "google-fonts", "webfonts", "css"],
   "server": {

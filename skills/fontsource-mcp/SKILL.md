@@ -12,10 +12,17 @@ Public API, no key, no rate limit to plan around. Every tool takes the font id s
 
 1. `search_fonts` with a `query` (fuzzy: `"open sans"`, `"OpenSans"`, and `"mono"` all match) or with
    filters alone to browse, such as `category:"monospace", variable:true, subsets:["latin"]`. Rows
-   carry weights, styles, subsets, and the variable flag, so pick from them directly.
+   carry weights, styles, subsets, the variable flag, Google Fonts `popularity` (lower is more popular)
+   and `designers`, so pick from them directly. `sort:"popular"|"trending"|"newest"` reorders;
+   `axes:["wdth"]` keeps fonts with every listed axis (Google Fonts only).
 2. `get_font` only for axes, unicode ranges, license, version, or CDN URL templates.
-3. `get_font_css` for a website (`link[]`, `import[]`, `npm`, `cssRule`, and `css`, the `@font-face`
-   text with absolute URLs), or `download_font` for files on disk under `<dest>/<id>/`.
+3. `check_text` with the real copy when it has accents or non-Latin script: it returns `missing`
+   characters and the `subsets` the copy needs.
+4. `compare_fonts` with two to four candidate ids and the real copy writes one HTML specimen; open or
+   screenshot it to judge them side by side.
+5. `get_font_css` for a website (`urls[]` for `<link>` or `@import`, `preload`, `npm`, `cssRule`, and
+   `css`, the `@font-face` text with absolute URLs), or `download_font` for files on disk under
+   `<dest>/<id>/`.
 
 ## Pitfalls
 
@@ -26,12 +33,17 @@ Public API, no key, no rate limit to plan around. Every tool takes the font id s
   what the design uses (`weights:[400,700]`) and set `subsets:["latin"]` for the small files.
 - `download_font` defaults to `$FONTSOURCE_DOWNLOAD_DIR`, then `./fonts` in the server's cwd, which
   under a plugin install is not the user's project. Pass an absolute `dest` when it matters. `zip:true`
-  saves the zip unextracted. Variable downloads ignore `weights` and `format`.
+  saves the zip unextracted. Variable downloads ignore `weights` and `format`; a CJK subset such as
+  `japanese` fetches its numbered slices (`noto-sans-jp` has 120), and `check_text` names the few a
+  text needs.
+- `check_text` reads the declared unicode ranges, not the glyph table, so a covered character can still
+  lack a glyph. Check the `compare_fonts` specimen when it matters. Its numbered CJK slices (`"45"`)
+  are `download_font` subsets only; `get_font_css` takes the named subset (`japanese`).
 - For whole-catalog questions ("all CC0 serif fonts with Vietnamese"), call `index_fonts` with
   `outFile` and grep or jq the JSON locally instead of paginating `search_fonts`.
 - A 404 means a wrong id or a file the font does not ship, such as `variableFile:"full"` on a
   wght-only font. Check `get_font` instead of retrying.
 
 Example: `search_fonts {query:"inter"}`, then `get_font_css {id:"inter", variable:true}` and paste
-`link[0]` plus `cssRule`, or `download_font {id:"inter", dest:"C:/proj/public/fonts", variable:true,
+`<link rel="stylesheet" href="urls[0]">` plus `preload` and `cssRule`, or `download_font {id:"inter", dest:"C:/proj/public/fonts", variable:true,
 subsets:["latin"]}`.

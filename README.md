@@ -10,17 +10,24 @@ range into one file and exposes axes such as `wght`.
 ## Tools
 
 - `search_fonts`: fuzzy `query` over id and family, plus AND filters (`category`, `subsets`, `weights`,
-  `styles`, `variable`, `license`, `type`). Paginated. Rows carry enough to pick a font.
+  `styles`, `variable`, `license`, `type`, and `axes` such as `["wdth","opsz"]`). `sort` is `popular`,
+  `trending`, or `newest`. Paginated. Rows carry enough to pick a font, plus Google Fonts `popularity`
+  and `designers`.
 - `get_font`: subsets, weights, styles, axes, unicode ranges, license, version, npm names, CSS
   font-family names, page URL, zip URL, and CDN URL templates for one `id`.
-- `get_font_css`: `<link>` tags, `@import` lines, npm install and import lines, the `font-family`
-  rule, and inlinable `@font-face` CSS with absolute URLs. `variable:true` selects the variable package.
+- `get_font_css`: stylesheet `urls` for `<link>` or `@import`, a `preload` link for the first latin
+  woff2, npm install and import lines, the `font-family` rule, and inlinable `@font-face` CSS with
+  absolute URLs. `variable:true` selects the variable package.
 - `download_font`: writes to `<dest>/<id>/`. Filters by subset, weight, style, and `format` (woff2,
-  woff, ttf). `variable:true` fetches `<subset>-wght-<style>.woff2`. `zip:true` saves the official zip
-  unextracted.
+  woff, ttf). `variable:true` fetches `<subset>-wght-<style>.woff2`; a CJK subset such as `japanese` fetches its
+  numbered slices. `zip:true` saves the official zip unextracted.
 - `index_fonts`: facet counts by category, subset, license, type, and variable. With `outFile` it
   writes the full catalog JSON to disk.
 - `get_axis_registry`: the variable-font axis registry.
+- `check_text`: the characters of a `text` that a font's unicode-range subsets miss, and the subset keys
+  the text needs.
+- `compare_fonts`: writes one HTML specimen of several `ids` at each weight and at 16, 24, and 48px, for a
+  browser screenshot.
 
 ## Download location
 
@@ -64,7 +71,7 @@ commit it.
 ```
 npm run build       # dist/index.mjs
 npm run pack        # build, then fontsource-mcp.mcpb
-npm run selftest    # about 20 live requests, ten seconds
+npm run selftest    # about 150 live requests, ten to twenty seconds
 ```
 
 A selftest failure means the API shape or CDN file naming changed.
@@ -74,6 +81,8 @@ A selftest failure means the API shape or CDN file naming changed.
 - `https://api.fontsource.org/v1/{fonts, fonts/:id, variable/:id, axis-registry, download/:id}`
 - `https://cdn.jsdelivr.net/fontsource/fonts/:id[:vf]@latest/<subset>-<weight|axis>-<style>.<ext>`
 - `https://cdn.jsdelivr.net/npm/@fontsource[-variable]/:id@latest/<file>.css`
+- `https://fonts.google.com/metadata/fonts` for popularity, trending, date added, designers, and axes.
+  It is undocumented; if it fails, `search_fonts` returns plain rows with a `warning`.
 
 Each font carries its own license (OFL, Apache-2.0, CC0, and others) in the `license` field.
 

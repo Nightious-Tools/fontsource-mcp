@@ -12,3 +12,5 @@ package-lock.json
 .gitignore
 .mcpbignore
 *.mcpb
+.work/
+.review/

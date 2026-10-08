@@ -21438,10 +21438,10 @@ var package_default = {
   keywords: ["mcp", "mcp-server", "model-context-protocol", "claude", "fonts", "fontsource", "google-fonts", "webfonts", "css"],
   license: "SEE LICENSE IN LICENSE",
   author: "nightious",
-  homepage: "https://github.com/nightious/fontsource-mcp",
+  homepage: "https://github.com/Nightious-Tools/fontsource-mcp",
   repository: {
     type: "git",
-    url: "git+https://github.com/nightious/fontsource-mcp.git"
+    url: "git+https://github.com/Nightious-Tools/fontsource-mcp.git"
   },
   bin: {
     "fontsource-mcp": "dist/index.mjs"

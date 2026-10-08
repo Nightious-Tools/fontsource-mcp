@@ -41,7 +41,7 @@ extension asks for a folder at install.
 Claude Code:
 
 ```
-/plugin marketplace add nightious/fontsource-mcp
+/plugin marketplace add Nightious-Tools/fontsource-mcp
 /plugin install fontsource-mcp@fontsource-mcp
 ```
 

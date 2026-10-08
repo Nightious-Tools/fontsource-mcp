@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "fontsource-mcp",
   "display_name": "Fontsource Fonts",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Search, index, link, and download 2000+ open-source fonts from fontsource.org.",
   "author": { "name": "nightious", "url": "https://github.com/nightious" },
   "repository": { "type": "git", "url": "https://github.com/nightious/fontsource-mcp.git" },

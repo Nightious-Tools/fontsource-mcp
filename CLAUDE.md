@@ -48,17 +48,20 @@ as GitHub user `nightious` (`gh auth switch -u nightious`). This repo's git `use
 ## Verification
 
 `npm run selftest` uses `node:assert/strict`, makes live requests, and takes about ten seconds. It is
-pinned to live state (Inter has a `wght` max of 900 and at least 300 files; noto-sans-jp has more than
-20 unicode-range subsets; the catalog exceeds 2000 fonts), so treat a failure as possible drift before
+pinned to live state (Inter has a `wght` max of 900; noto-sans-jp has more than 20 unicode-range
+subsets, numbered variable slices, and `日本語` in them; the catalog exceeds 2000 fonts; Google Fonts
+ranks `inter` or `roboto` in its top 5), so treat a failure as possible drift before
 treating it as a regression. CI runs it.
 
 For the bundle, copy `dist/index.mjs` alone into an empty directory and pipe `initialize` plus
-`tools/list` JSON-RPC into `node index.mjs`. It must list six tools.
+`tools/list` JSON-RPC into `node index.mjs`. It must list eight tools.
 
 ## Pitfalls
 
 - `slug()` is the traversal guard. The id goes into URLs and into `path.join(dir, id)`. Keep the
   regex strict.
+- `tag()` is the same guard for `axis`, `variableFile`, and `subsets`, which also reach file names and
+  URLs. It allows uppercase for custom axis tags such as `GRAD`.
 - The npm CDN CSS uses relative `url(./files/...)`. That works for `<link>` and `@import`;
   `getFontCss` absolutizes only the inlined `css` text. The `cdn.jsdelivr.net/fontsource/css/` mirror
   has absolute URLs but lacks per-subset files, which is why the npm CDN is used.

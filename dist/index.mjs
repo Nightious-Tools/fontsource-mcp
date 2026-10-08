@@ -6557,7 +6557,7 @@ var require_discriminator = __commonJS({
     var util_1 = require_util();
     var error2 = {
       message: ({ params: { discrError, tagName } }) => discrError === types_1.DiscrError.Tag ? `tag "${tagName}" must be string` : `value of tag "${tagName}" must be in oneOf`,
-      params: ({ params: { discrError, tag, tagName } }) => (0, codegen_1._)`{error: ${discrError}, tag: ${tagName}, tagValue: ${tag}}`
+      params: ({ params: { discrError, tag: tag2, tagName } }) => (0, codegen_1._)`{error: ${discrError}, tag: ${tagName}, tagValue: ${tag2}}`
     };
     var def = {
       keyword: "discriminator",
@@ -6578,18 +6578,18 @@ var require_discriminator = __commonJS({
         if (!oneOf)
           throw new Error("discriminator: requires oneOf keyword");
         const valid = gen.let("valid", false);
-        const tag = gen.const("tag", (0, codegen_1._)`${data}${(0, codegen_1.getProperty)(tagName)}`);
-        gen.if((0, codegen_1._)`typeof ${tag} == "string"`, () => validateMapping(), () => cxt.error(false, { discrError: types_1.DiscrError.Tag, tag, tagName }));
+        const tag2 = gen.const("tag", (0, codegen_1._)`${data}${(0, codegen_1.getProperty)(tagName)}`);
+        gen.if((0, codegen_1._)`typeof ${tag2} == "string"`, () => validateMapping(), () => cxt.error(false, { discrError: types_1.DiscrError.Tag, tag: tag2, tagName }));
         cxt.ok(valid);
         function validateMapping() {
           const mapping = getMapping();
           gen.if(false);
           for (const tagValue in mapping) {
-            gen.elseIf((0, codegen_1._)`${tag} === ${tagValue}`);
+            gen.elseIf((0, codegen_1._)`${tag2} === ${tagValue}`);
             gen.assign(valid, applyTagSchema(mapping[tagValue]));
           }
           gen.else();
-          cxt.error(false, { discrError: types_1.DiscrError.Mapping, tag, tagName });
+          cxt.error(false, { discrError: types_1.DiscrError.Mapping, tag: tag2, tagName });
           gen.endIf();
         }
         function applyTagSchema(schemaProp) {
@@ -21432,7 +21432,7 @@ var StdioServerTransport = class {
 // package.json
 var package_default = {
   name: "fontsource-mcp",
-  version: "0.1.1",
+  version: "0.2.0",
   type: "module",
   description: "MCP server to search, index, link, and download the 2000+ open-source fonts on fontsource.org",
   keywords: ["mcp", "mcp-server", "model-context-protocol", "claude", "fonts", "fontsource", "google-fonts", "webfonts", "css"],
@@ -21473,37 +21473,39 @@ function slug(id2) {
     throw new Error(`bad font id "${id2}": ids are lowercase slugs like "open-sans"; use search_fonts to find one`);
   return id2;
 }
-async function get(url, as = "json") {
-  const r = await fetch(url);
+var tag = (v, what) => {
+  if (typeof v !== "string" || !/^[A-Za-z0-9-]+$/.test(v)) throw new Error(`bad ${what} "${v}": letters, digits, and hyphens only; see get_font`);
+};
+async function get(url, as = "json", ms = 6e4) {
+  const r = await fetch(url, { signal: AbortSignal.timeout(ms) });
   if (!r.ok)
     throw new Error(`fontsource HTTP ${r.status}: ${url}${r.status === 404 ? " (unknown font id or file; use search_fonts or get_font)" : ""}`);
   return as === "json" ? r.json() : as === "text" ? r.text() : Buffer.from(await r.arrayBuffer());
 }
 var cache = /* @__PURE__ */ new Map();
-async function cached2(url) {
+async function cached2(url, ms) {
   const hit = cache.get(url);
   if (hit && Date.now() - hit.at < TTL) return hit.v;
-  const v = await get(url);
+  const v = await get(url, "json", ms);
   cache.set(url, { at: Date.now(), v });
   return v;
 }
 var catalog = () => cached2(`${API}/fonts`);
 var font = (id2) => cached2(`${API}/fonts/${slug(id2)}`);
 var norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-var row = (f) => ({
-  id: f.id,
-  family: f.family,
-  category: f.category,
-  variable: f.variable,
-  weights: f.weights,
-  styles: f.styles,
-  subsets: f.subsets,
-  license: f.license,
-  type: f.type
-});
-async function searchFonts({ query, category, subsets: subsets2, weights: weights2, styles: styles2, variable, license, type, limit = 20, offset = 0 } = {}) {
+var SORT = { popular: (g) => g.popularity, trending: (g) => g.trending, newest: (g) => -Date.parse(g.dateAdded) };
+var gmDown = { at: -Infinity };
+async function searchFonts({ query, category, subsets: subsets2, weights: weights2, styles: styles2, variable, license, type, axes, sort, limit = 20, offset = 0 } = {}) {
   const lic = license?.toLowerCase();
-  let list = (await catalog()).filter((f) => (category == null || f.category === category) && (type == null || f.type === type) && (variable == null || f.variable === variable) && (lic == null || f.license?.toLowerCase() === lic) && (subsets2 ?? []).every((s) => f.subsets.includes(s)) && (weights2 ?? []).every((w) => f.weights.includes(w)) && (styles2 ?? []).every((s) => f.styles.includes(s)));
+  let gm = null, warning;
+  try {
+    if (Date.now() - gmDown.at < 3e5) throw gmDown.e;
+    gm = new Map((await cached2("https://fonts.google.com/metadata/fonts", 15e3)).familyMetadataList.map((g) => [g.family, g]));
+  } catch (e) {
+    if (e !== gmDown.e) gmDown = { at: Date.now(), e };
+    warning = `Google Fonts metadata unavailable (${e.message}): no popularity, designers, sort, or axes filter`;
+  }
+  let list = (await catalog()).filter((f) => (category == null || f.category === category) && (type == null || f.type === type) && (variable == null || f.variable === variable) && (lic == null || f.license?.toLowerCase() === lic) && (subsets2 ?? []).every((s) => f.subsets.includes(s)) && (weights2 ?? []).every((w) => f.weights.includes(w)) && (styles2 ?? []).every((s) => f.styles.includes(s)) && (!gm || (axes ?? []).every((t) => gm.get(f.family)?.axes?.some((a) => a.tag === t))));
   const q = query?.trim().toLowerCase();
   if (q) {
     const nq = norm(q), toks = q.split(/\s+/);
@@ -21517,39 +21519,29 @@ async function searchFonts({ query, category, subsets: subsets2, weights: weight
     };
     list = list.map((f) => [score(f), f]).filter(([s]) => s).sort((a, b) => b[0] - a[0] || a[1].family.length - b[1].family.length || a[1].family.localeCompare(b[1].family)).map(([, f]) => f);
   }
-  return { total: list.length, offset, limit, rows: list.slice(offset, offset + limit).map(row) };
+  if (sort && gm) {
+    const v = (f) => {
+      const g = gm.get(f.family), x = g && SORT[sort](g);
+      return Number.isFinite(x) ? x : Infinity;
+    };
+    list.sort((a, b) => v(a) - v(b));
+  }
+  const rows = list.slice(offset, offset + limit).map((f) => gm ? { ...f, popularity: gm.get(f.family)?.popularity ?? null, designers: gm.get(f.family)?.designers ?? null } : f);
+  return { total: list.length, offset, limit, rows, warning };
 }
 async function getFont(id2) {
-  const f = await font(id2);
+  const { variants, unicodeRange: ur = {}, ...f } = await font(id2);
   const axes = f.variable ? await cached2(`${API}/variable/${id2}`).then((v) => v.axes, (e) => {
     if (/HTTP 404/.test(e.message)) return null;
     throw e;
   }) : null;
-  let count = 0;
   const formats = /* @__PURE__ */ new Set();
-  for (const byStyle of Object.values(f.variants ?? {}))
+  for (const byStyle of Object.values(variants ?? {}))
     for (const bySub of Object.values(byStyle))
-      for (const v of Object.values(bySub)) {
-        const ks = Object.keys(v.url ?? {});
-        count += ks.length;
-        ks.forEach((k) => formats.add(k));
-      }
-  const ur = f.unicodeRange ?? {}, urKeys = Object.keys(ur);
+      for (const v of Object.values(bySub)) Object.keys(v.url ?? {}).forEach((k) => formats.add(k));
+  const urKeys = Object.keys(ur);
   return {
-    id: f.id,
-    family: f.family,
-    category: f.category,
-    license: f.license,
-    type: f.type,
-    version: f.version,
-    npmVersion: f.npmVersion,
-    source: f.source,
-    lastModified: f.lastModified,
-    variable: f.variable,
-    defSubset: f.defSubset,
-    subsets: f.subsets,
-    weights: f.weights,
-    styles: f.styles,
+    ...f,
     axes,
     // noto-sans-jp has about 120 unicode-range subsets. Cap them so get_font stays small.
     unicodeRange: urKeys.length > 20 ? { omitted: urKeys.length, url: `${API}/fonts/${id2}` } : ur,
@@ -21563,11 +21555,13 @@ async function getFont(id2) {
       css: `${CDN}/npm/@fontsource/${id2}@latest/{weight}[-italic].css`,
       variableCss: f.variable ? `${CDN}/npm/@fontsource-variable/${id2}@latest/wght[-italic].css` : null
     },
-    files: { count, formats: [...formats] }
+    files: { formats: [...formats] }
   };
 }
-var GENERIC = { serif: "serif", monospace: "monospace", handwriting: "cursive", display: "cursive" };
+var GENERIC = { serif: "serif", monospace: "monospace", handwriting: "cursive" };
 async function getFontCss({ id: id2, weights: weights2 = [400], styles: styles2 = ["normal"], subsets: subsets2, variable = false, variableFile = "wght" } = {}) {
+  tag(variableFile, "variableFile");
+  subsets2?.forEach((s) => tag(s, "subset"));
   const f = await font(id2);
   if (variable && !f.variable) throw new Error(`"${id2}" is not a variable font; call get_font_css without variable:true`);
   const ital = (s) => s === "italic" ? "-italic" : "";
@@ -21583,12 +21577,12 @@ async function getFontCss({ id: id2, weights: weights2 = [400], styles: styles2 
   const urls = names.map((n) => base + n);
   const fontFamily = variable ? `${f.family} Variable` : f.family;
   const css = (await Promise.all(urls.map((u) => get(u, "text")))).join("\n").replaceAll("url(./files/", `url(${base}files/`);
+  const pre = css.match(/url\(([^)]+-latin-(?!ext)[^)]*\.woff2)\)/)?.[1];
   return {
     fontFamily,
     cssRule: `font-family: "${fontFamily}", ${GENERIC[f.category] ?? "sans-serif"};`,
     urls,
-    link: urls.map((u) => `<link rel="stylesheet" href="${u}">`),
-    import: urls.map((u) => `@import url("${u}");`),
+    preload: pre ? `<link rel="preload" as="font" type="font/woff2" href="${pre}" crossorigin>` : null,
     npm: { install: `npm i ${pkg}`, import: names.map((n) => `import "${pkg}/${n}";`) },
     css
   };
@@ -21596,6 +21590,7 @@ async function getFontCss({ id: id2, weights: weights2 = [400], styles: styles2 
 var defaultDownloadDir = () => path.resolve(process.env.FONTSOURCE_DOWNLOAD_DIR || "fonts");
 async function downloadFont({ id: id2, dest, format = "woff2", subsets: subsets2, weights: weights2, styles: styles2, variable = false, axis = "wght", zip = false } = {}) {
   slug(id2);
+  tag(axis, "axis");
   const dir = path.join(dest ? path.resolve(dest) : defaultDownloadDir(), id2);
   const want = (arr, k) => !arr?.length || arr.map(String).includes(String(k));
   const jobs = [];
@@ -21605,7 +21600,10 @@ async function downloadFont({ id: id2, dest, format = "woff2", subsets: subsets2
     const f = await font(id2);
     if (variable) {
       if (!f.variable) throw new Error(`"${id2}" is not a variable font; call download_font without variable:true`);
-      for (const sub of f.subsets.filter((s) => want(subsets2, s)))
+      const ks = Object.keys(f.unicodeRange ?? {}), keys = (ks.length ? ks : f.subsets).map(unbracket);
+      const nums = keys.filter((k) => /^\d+$/.test(k));
+      const subs = subsets2?.length ? [...new Set(subsets2.flatMap((s) => keys.includes(s) ? [s] : f.subsets.includes(s) ? nums : []))] : keys;
+      for (const sub of subs)
         for (const st of f.styles.filter((s) => want(styles2, s)))
           jobs.push({ name: `${sub}-${axis}-${st}.woff2`, url: `${CDN}/fontsource/fonts/${id2}:vf@latest/${sub}-${axis}-${st}.woff2` });
     } else {
@@ -21619,7 +21617,7 @@ async function downloadFont({ id: id2, dest, format = "woff2", subsets: subsets2
   }
   if (!jobs.length) throw new Error(`no files match those filters for "${id2}"; see get_font for its subsets, weights, and styles`);
   fs.mkdirSync(dir, { recursive: true });
-  const results = await Promise.all(jobs.map(async (j) => {
+  const one = async (j) => {
     try {
       const buf = await get(j.url, "buffer");
       fs.writeFileSync(path.join(dir, j.name), buf);
@@ -21627,9 +21625,54 @@ async function downloadFont({ id: id2, dest, format = "woff2", subsets: subsets2
     } catch (e) {
       return { name: j.name, error: e.message };
     }
-  }));
+  };
+  const results = [];
+  for (let i = 0; i < jobs.length; i += 8) results.push(...await Promise.all(jobs.slice(i, i + 8).map(one)));
   const files = results.filter((r) => r.bytes != null), failed = results.filter((r) => r.error);
   return { dir, files, totalBytes: files.reduce((n, f) => n + f.bytes, 0), ...failed.length ? { failed } : {} };
+}
+var unbracket = (k) => k.replace(/^\[(\d+)\]$/, "$1");
+async function checkText({ id: id2, text: text2 } = {}) {
+  const f = await font(id2);
+  const ranges = Object.entries(f.unicodeRange ?? {}).map(([k, v]) => [unbracket(k), v.split(",").map((r) => {
+    const [a, b = a] = r.trim().replace(/^U\+/i, "").split("-");
+    return [parseInt(a.replaceAll("?", "0"), 16), parseInt(b.replaceAll("?", "f"), 16)];
+  })]);
+  if (!ranges.length) throw new Error(`"${id2}" declares no unicodeRange, so coverage is unknown`);
+  const covers = (rs, cp) => rs.some(([lo, hi]) => cp >= lo && cp <= hi);
+  const missing = [], subsets2 = [];
+  for (const ch of new Set(text2)) {
+    const cp = ch.codePointAt(0);
+    if (ranges.some(([k, rs]) => subsets2.includes(k) && covers(rs, cp))) continue;
+    const hit = ranges.find(([, rs]) => covers(rs, cp));
+    if (hit) subsets2.push(hit[0]);
+    else missing.push(ch);
+  }
+  return { missing, subsets: subsets2 };
+}
+var esc2 = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+async function compareFonts({ ids, text: text2 = "The quick brown fox jumps over the lazy dog 0123456789", weights: weights2 = [400, 700], outFile } = {}) {
+  const links = [], rows = [], fontFamilies = {};
+  for (const f of await Promise.all(ids.map((id2) => font(id2)))) {
+    const fam = f.variable ? `${f.family} Variable` : f.family;
+    const ws = weights2.filter((w) => f.weights.includes(w));
+    if (!ws.length) ws.push(f.weights[0]);
+    fontFamilies[f.id] = fam;
+    const base = `${CDN}/npm/@fontsource${f.variable ? "-variable" : ""}/${f.id}@latest/`;
+    for (const n of f.variable ? ["wght.css"] : ws.map((w) => `${w}.css`)) links.push(`<link rel="stylesheet" href="${base}${n}">`);
+    const cssFam = esc2(fam.replace(/[\\']/g, "\\$&"));
+    for (const w of ws) for (const px of [16, 24, 48])
+      rows.push(`<small>${esc2(fam)} ${w}, ${px}px</small><p style="font: ${w} ${px}px '${cssFam}', ${GENERIC[f.category] ?? "sans-serif"}">${esc2(text2)}</p>`);
+  }
+  const p = path.resolve(outFile);
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Font specimen</title>
+${links.join("\n")}
+<style>body{margin:24px;font:14px system-ui,sans-serif}small{display:block;color:#555}p{margin:4px 0 20px;overflow-wrap:anywhere}</style>
+${rows.join("\n")}
+`);
+  return { outFile: p, fontFamilies };
 }
 async function indexFonts({ outFile } = {}) {
   const list = await catalog();
@@ -21655,11 +21698,11 @@ async function indexFonts({ outFile } = {}) {
   }
   return out;
 }
-async function getAxisRegistry(tag) {
+async function getAxisRegistry(tag2) {
   const reg = await cached2(`${API}/axis-registry`);
-  if (!tag) return reg;
-  const key = [tag, tag.toLowerCase(), tag.toUpperCase()].find((k) => reg[k]);
-  if (!key) throw new Error(`unknown axis "${tag}"; known: ${Object.keys(reg).join(", ")}`);
+  if (!tag2) return reg;
+  const key = [tag2, tag2.toLowerCase(), tag2.toUpperCase()].find((k) => reg[k]);
+  if (!key) throw new Error(`unknown axis "${tag2}"; known: ${Object.keys(reg).join(", ")}`);
   return { tag: key, ...reg[key] };
 }
 
@@ -21674,7 +21717,7 @@ var styles = external_exports.array(external_exports.enum(["normal", "italic"]))
 server.registerTool(
   "search_fonts",
   {
-    description: "Search the Fontsource catalog of 2000+ open-source fonts. The fuzzy query matches id and family (exact, then prefix, then substring, then all words). Filters are AND. Rows are compact and carry the id every other tool needs. Filters without a query browse a category.",
+    description: "Search the Fontsource catalog of 2000+ open-source fonts. The fuzzy query matches id and family (exact, then prefix, then substring, then all words). Filters are AND. Rows are the catalog rows (the id every other tool needs, weights, styles, subsets, variable) plus Google Fonts popularity (rank, lower is more popular) and designers, null for fonts not on Google Fonts. Filters without a query browse a category. sort replaces relevance order. If Google Fonts metadata is unreachable, rows come back unenriched with a warning.",
     annotations: { title: "Search fonts", ...RO },
     inputSchema: {
       query: external_exports.string().optional().describe('Name fragment such as "inter", "open sans", or "mono".'),
@@ -21685,6 +21728,8 @@ server.registerTool(
       variable: external_exports.boolean().optional().describe("true returns only variable fonts."),
       license: external_exports.string().optional().describe("OFL-1.1 | Apache-2.0 | CC0-1.0 | mit | Unlicense | UFL-1.0"),
       type: external_exports.enum(["google", "other"]).optional().describe("google means mirrored from Google Fonts."),
+      axes: external_exports.array(external_exports.string()).optional().describe('Variable axis tags the font must all have, such as ["wdth","opsz"]. Uses Google Fonts axes, so fonts not on Google Fonts never match.'),
+      sort: external_exports.enum(["popular", "trending", "newest"]).optional().describe("Google Fonts popularity rank, trending rank, or dateAdded. Fonts not on Google Fonts sort last."),
       limit: external_exports.number().int().min(1).max(100).optional().describe("Default 20."),
       offset: external_exports.number().int().min(0).optional()
     }
@@ -21703,13 +21748,13 @@ server.registerTool(
 server.registerTool(
   "get_font_css",
   {
-    description: 'Font embedding snippets: CDN <link> tags, @import lines, npm install and import lines, the font-family rule, and the @font-face CSS text with absolute URLs, safe to inline. Defaults to weight 400 normal. Each extra weight and style combination adds about 1.5KB of CSS. Set variable:true for the variable package; the font-family then becomes "<Family> Variable".',
+    description: 'Font embedding snippets: CDN stylesheet urls (use each in <link rel="stylesheet"> or @import), a preload <link> for the first latin woff2 (null if none), npm install and import lines, the font-family rule, and the @font-face CSS text with absolute URLs, safe to inline. Defaults to weight 400 normal. Each extra weight and style combination adds about 1.5KB of CSS. Set variable:true for the variable package; the font-family then becomes "<Family> Variable".',
     annotations: { title: "Get font CSS and links", ...RO },
     inputSchema: {
       id,
       weights: external_exports.array(external_exports.number()).optional().describe("Static only. Default [400]."),
       styles: external_exports.array(external_exports.enum(["normal", "italic"])).optional().describe('Default ["normal"].'),
-      subsets: external_exports.array(external_exports.string()).optional().describe("Static only. Omit for the all-subsets file per weight, or set it for the smaller per-subset files."),
+      subsets: external_exports.array(external_exports.string()).optional().describe('Static only. Omit for the all-subsets file per weight, or set it for the smaller per-subset files such as ["latin"].'),
       variable: external_exports.boolean().optional().describe("Use @fontsource-variable/<id>. The font must be variable."),
       variableFile: external_exports.string().optional().describe('Variable only. CSS file stem: "wght" (default, always exists), or "standard", "full", "opsz", and so on where the package ships them.')
     }
@@ -21719,7 +21764,7 @@ server.registerTool(
 server.registerTool(
   "download_font",
   {
-    description: `Download font files to disk under <dest>/<id>/. Default dest is $FONTSOURCE_DOWNLOAD_DIR, else ./fonts (currently ${defaultDownloadDir()}). Static mode filters subsets, weights, styles, and format. variable:true fetches <subset>-<axis>-<style>.woff2 variable files and ignores weights and format. zip:true saves the official all-files zip without extracting it. Returns saved names and bytes.`,
+    description: `Download font files to disk under <dest>/<id>/. Default dest is $FONTSOURCE_DOWNLOAD_DIR, else ./fonts (currently ${defaultDownloadDir()}). Static mode filters subsets, weights, styles, and format. variable:true fetches <subset>-<axis>-<style>.woff2 variable files and ignores weights and format; a CJK subset such as japanese fetches its numbered unicode-range slices (0, 1, ... 119), and check_text names the slices a text needs. zip:true saves the official all-files zip without extracting it. Returns saved names and bytes.`,
     annotations: { title: "Download font files", readOnlyHint: false, destructiveHint: false },
     inputSchema: {
       id,
@@ -21729,7 +21774,7 @@ server.registerTool(
       weights,
       styles,
       variable: external_exports.boolean().optional(),
-      axis: external_exports.string().optional().describe('Variable only. "wght" (default), "standard", "full", or a single axis tag.'),
+      axis: external_exports.string().optional().describe('Variable only. "wght" (default), "standard", "full", or a single axis tag. Letters, digits, and hyphens only.'),
       zip: external_exports.boolean().optional().describe("Save the api.fontsource.org/v1/download/<id> zip instead of individual files.")
     }
   },
@@ -21751,6 +21796,29 @@ server.registerTool(
     annotations: { title: "Axis registry", ...RO },
     inputSchema: { tag: external_exports.string().optional() }
   },
-  async ({ tag }) => text(await getAxisRegistry(tag))
+  async ({ tag: tag2 }) => text(await getAxisRegistry(tag2))
+);
+server.registerTool(
+  "check_text",
+  {
+    description: `Which characters of a text a font covers, from its declared unicode-range subsets (the subset declaration, not the font's glyph table). Returns missing characters and the subset keys the text needs, ready for download_font subsets. Named keys such as "latin-ext" also work as get_font_css subsets; numbered CJK slices such as "45" do not, so pass get_font_css the named subset ("japanese") instead.`,
+    annotations: { title: "Check text coverage", ...RO },
+    inputSchema: { id, text: external_exports.string().describe("The text to render, such as a heading or a sample with accents.") }
+  },
+  async (a) => text(await checkText(a))
+);
+server.registerTool(
+  "compare_fonts",
+  {
+    description: "Write one HTML specimen comparing fonts side by side: each font in its CDN stylesheet (variable package when the font is variable), each weight at 16, 24, and 48px. Weights a static font lacks are skipped rather than faux-bolded. Open or screenshot the file in a browser. Returns outFile and the CSS font-family name per id.",
+    annotations: { title: "Compare fonts", readOnlyHint: false, destructiveHint: false },
+    inputSchema: {
+      ids: external_exports.array(external_exports.string()).min(1).describe('Fontsource id slugs such as ["inter","abril-fatface"].'),
+      text: external_exports.string().optional().describe("Sample text. Default: the quick brown fox pangram plus digits."),
+      weights: external_exports.array(external_exports.number()).optional().describe("Default [400,700]."),
+      outFile: external_exports.string().describe("HTML path to write, absolute or relative to the server cwd.")
+    }
+  },
+  async (a) => text(await compareFonts(a))
 );
 await server.connect(new StdioServerTransport());

@@ -7,7 +7,7 @@
       "name": "fontsource-mcp",
       "source": "./",
       "description": "MCP server for fontsource.org: fuzzy font search, metadata, CSS, CDN, and npm snippets, catalog indexing, and font file downloads, with a skill that teaches agents the tool flow.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "author": { "name": "nightious" },
       "homepage": "https://github.com/nightious/fontsource-mcp",
       "repository": "https://github.com/nightious/fontsource-mcp",

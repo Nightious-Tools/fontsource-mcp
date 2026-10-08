@@ -29,20 +29,7 @@ jobs:
 
       # src/index.js imports the version from package.json (inlined at build). The other 3 are hand-edited.
       - name: versions agree
-        run: |
-          V=$(node -p "require('./package.json').version")
-          echo "package.json version: $V"
-          fail=0
-          check() {
-            if ! grep -qF "$2" "$1"; then
-              echo "::error file=$1::expected $2 (package.json says $V)"
-              fail=1
-            fi
-          }
-          check manifest.json                       "\"version\": \"$V\""
-          check .claude-plugin/plugin.json          "\"version\": \"$V\""
-          check .claude-plugin/marketplace.json     "\"version\": \"$V\""
-          exit $fail
+        run: node -p "const v = ['package.json', 'manifest.json', '.claude-plugin/plugin.json', '.claude-plugin/marketplace.json'].map((f) => { const j = require('./' + f); return f + ' ' + (j.version ?? j.plugins[0].version); }); if (new Set(v.map((s) => s.split(' ')[1])).size > 1) { console.error('::error::versions disagree'); process.exitCode = 1; } v.join('\\n')"
 
       # Live selftest: the Fontsource API and jsdelivr are public with no bot-blocking, so this is safe on runners.
       - run: npm run selftest

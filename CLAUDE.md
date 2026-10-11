@@ -8,13 +8,22 @@ reasoning. Read them before editing.
 
 ## dist/ is what runs
 
-`dist/index.mjs` is committed and both install channels execute it directly. Nothing builds on the
-user's machine: `.claude-plugin/plugin.json` runs `${CLAUDE_PLUGIN_ROOT}/dist/index.mjs` and
-`manifest.json` runs `${__dirname}/dist/index.mjs`. The two variables belong to different hosts.
-`npm start` runs `src/`, which nothing in production does.
+`dist/index.mjs` is committed and every install channel executes it directly. Nothing builds on the
+user's machine: `.claude-plugin/plugin.json` runs `${CLAUDE_PLUGIN_ROOT}/dist/index.mjs`,
+`manifest.json` runs `${__dirname}/dist/index.mjs`, and `.mcp.json` runs `dist/index.mjs` from the
+repo root. The two variables belong to different hosts. `npm start` runs `src/`, which nothing in
+production does.
 
 After any `src/` edit, run `npm run build` and commit `dist/` in the same commit. The selftest never
 loads `dist/`, so a stale bundle fails only in CI.
+
+## Cloud sessions
+
+On claude.ai/code repo-declared plugins don't install: the server loads from `.mcp.json` and the skill
+from `.claude/skills/fontsource-mcp`, a symlink to `skills/fontsource-mcp` (edit the original). The
+server connects in the background and can miss the first prompt: if its tools aren't listed,
+`ToolSearch` for `fontsource` (it waits for a connecting server) before saying they're unavailable.
+The cloud environment's network access must allow `api.fontsource.org` and `cdn.jsdelivr.net`.
 
 ## Lockstep
 
@@ -24,6 +33,7 @@ loads `dist/`, so a stale bundle fails only in CI.
 | a tool or param | `src/index.js`, `README.md`, `skills/fontsource-mcp/SKILL.md`. The manifest carries no `tools` array on purpose. |
 | param guidance | The `.describe()` strings in `src/index.js` repeat SKILL.md on purpose: `.mcpbignore` drops `skills/`, so `.mcpb` users never see the skill. |
 | `FONTSOURCE_DOWNLOAD_DIR` | `src/fontsource.js`, `manifest.json` (`user_config.download_dir`), `README.md`, SKILL.md, the `download_font` description. |
+| server name `fontsource` | `.claude-plugin/plugin.json`, `.mcp.json`, `README.md`. |
 | `keywords` | The four JSON files and the GitHub repo topics. Nothing checks them. |
 
 Never regex-bump a version: `manifest.json` also carries `"manifest_version": "0.3"`, the MCPB spec
@@ -43,7 +53,7 @@ gh release create v<X.Y.Z> fontsource-mcp.mcpb --title "v<X.Y.Z>" --notes "..."
 ```
 
 Run `npm run pack` right before attaching; a `.mcpb` left in the working directory may be stale. Publish
-as GitHub user `nightious` (`gh auth switch -u nightious`). This repo's git `user.name` is set to match.
+as GitHub user `nightious` (`gh auth switch -u nightious`).
 
 ## Verification
 

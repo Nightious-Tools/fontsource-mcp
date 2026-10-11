@@ -4,6 +4,8 @@ node_modules/
 src/
 skills/
 .claude-plugin/
+.claude/
+.mcp.json
 .git/
 .github/
 CLAUDE.md

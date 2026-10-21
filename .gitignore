@@ -1,3 +1,8 @@
 node_modules/
 # release artifact: attach it to GitHub Releases, do not commit it (dist/ is committed)
 *.mcpb
+
+# repowise: the decisions manifest is meant to be committed
+!/.repowise/
+/.repowise/*
+!/.repowise/decisions.yaml

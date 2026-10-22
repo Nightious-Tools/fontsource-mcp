@@ -52,8 +52,7 @@ git push
 gh release create v<X.Y.Z> fontsource-mcp.mcpb --title "v<X.Y.Z>" --notes "..."
 ```
 
-Run `npm run pack` right before attaching; a `.mcpb` left in the working directory may be stale. Publish
-as GitHub user `nightious` (`gh auth switch -u nightious`).
+Run `npm run pack` right before attaching; a `.mcpb` left in the working directory may be stale.
 
 ## Verification
 

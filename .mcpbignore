@@ -16,3 +16,4 @@ package-lock.json
 *.mcpb
 .work/
 .review/
+docs/
